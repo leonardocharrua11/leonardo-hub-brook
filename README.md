@@ -1,7 +1,6 @@
-
 local player = game.Players.LocalPlayer
 local flying = false
-local speed = 50
+local speed = 60
 
 -- Criar GUI
 local screenGui = Instance.new("ScreenGui")
@@ -9,7 +8,7 @@ screenGui.Name = "LeonardoHub"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 160)
+frame.Size = UDim2.new(0, 220, 0, 220)
 frame.Position = UDim2.new(0, 30, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.2
@@ -45,10 +44,32 @@ flyBtn.Font = Enum.Font.SourceSansBold
 flyBtn.TextSize = 20
 flyBtn.Parent = frame
 
+local upBtn = Instance.new("TextButton")
+upBtn.Text = "↑ Subir"
+upBtn.Size = UDim2.new(0.42, 0, 0, 30)
+upBtn.Position = UDim2.new(0.05, 0, 0, 90)
+upBtn.BackgroundColor3 = Color3.fromRGB(60, 150, 225)
+upBtn.TextColor3 = Color3.fromRGB(255,255,255)
+upBtn.Font = Enum.Font.SourceSansBold
+upBtn.TextSize = 18
+upBtn.Parent = frame
+upBtn.Visible = false
+
+local downBtn = Instance.new("TextButton")
+downBtn.Text = "↓ Descer"
+downBtn.Size = UDim2.new(0.42, 0, 0, 30)
+downBtn.Position = UDim2.new(0.53, 0, 0, 90)
+downBtn.BackgroundColor3 = Color3.fromRGB(225, 150, 60)
+downBtn.TextColor3 = Color3.fromRGB(255,255,255)
+downBtn.Font = Enum.Font.SourceSansBold
+downBtn.TextSize = 18
+downBtn.Parent = frame
+downBtn.Visible = false
+
 local trollBtn = Instance.new("TextButton")
 trollBtn.Text = "Trollar (Teleportar Todos)"
 trollBtn.Size = UDim2.new(0.9, 0, 0, 40)
-trollBtn.Position = UDim2.new(0.05, 0, 0, 90)
+trollBtn.Position = UDim2.new(0.05, 0, 0, 130)
 trollBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 trollBtn.TextColor3 = Color3.fromRGB(255,255,255)
 trollBtn.Font = Enum.Font.SourceSansBold
@@ -60,64 +81,85 @@ minimizar.MouseButton1Click:Connect(function()
     minimizado = not minimizado
     flyBtn.Visible = not minimizado
     trollBtn.Visible = not minimizado
+    upBtn.Visible = not minimizado and flying
+    downBtn.Visible = not minimizado and flying
     if minimizado then
         frame.Size = UDim2.new(0, 220, 0, 30)
         minimizar.Text = "+"
     else
-        frame.Size = UDim2.new(0, 220, 0, 160)
+        frame.Size = UDim2.new(0, 220, 0, 220)
         minimizar.Text = "-"
     end
 end)
 
 -- Função de voo
+local bodyVelocity
+local verticalDirection = 0
+
+function setBodyVelocity(vel)
+    if not bodyVelocity and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(1,1,1) * 1e5
+        bodyVelocity.Parent = player.Character.HumanoidRootPart
+    end
+    if bodyVelocity then
+        bodyVelocity.Velocity = vel
+    end
+end
+
+function removeBodyVelocity()
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+        bodyVelocity = nil
+    end
+end
+
 function fly()
     local char = player.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = char.HumanoidRootPart
-
     flying = true
-    while flying do
-        local moveDirection = Vector3.new()
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + workspace.CurrentCamera.CFrame.LookVector
+    upBtn.Visible = true
+    downBtn.Visible = true
+    while flying and char and char:FindFirstChild("HumanoidRootPart") do
+        local cam = workspace.CurrentCamera
+        local moveDir = Vector3.new()
+        -- Mobile: direção da câmera
+        if cam then
+            moveDir = cam.CFrame.LookVector
         end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - workspace.CurrentCamera.CFrame.LookVector
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - workspace.CurrentCamera.CFrame.RightVector
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + workspace.CurrentCamera.CFrame.RightVector
-        end
-        if moveDirection.Magnitude > 0 then
-            hrp.Velocity = moveDirection.Unit * speed
-        else
-            hrp.Velocity = Vector3.new(0,0,0)
-        end
+        -- Ajuste vertical
+        moveDir = (moveDir * speed) + Vector3.new(0, verticalDirection * speed, 0)
+        setBodyVelocity(moveDir)
         wait(0.03)
     end
-    hrp.Velocity = Vector3.new(0,0,0)
+    removeBodyVelocity()
+    upBtn.Visible = false
+    downBtn.Visible = false
 end
 
 function stopFly()
     flying = false
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
-    end
+    removeBodyVelocity()
+    upBtn.Visible = false
+    downBtn.Visible = false
 end
 
 flyBtn.MouseButton1Click:Connect(function()
     if not flying then
-        fly()
         flyBtn.BackgroundColor3 = Color3.fromRGB(60, 150, 225)
         flyBtn.Text = "Voando! (clique p/ parar)"
+        fly()
     else
-        stopFly()
         flyBtn.BackgroundColor3 = Color3.fromRGB(80,180,80)
         flyBtn.Text = "Ativar/Desativar Voar"
+        stopFly()
     end
 end)
+
+upBtn.MouseButton1Down:Connect(function() verticalDirection = 1 end)
+upBtn.MouseButton1Up:Connect(function() verticalDirection = 0 end)
+downBtn.MouseButton1Down:Connect(function() verticalDirection = -1 end)
+downBtn.MouseButton1Up:Connect(function() verticalDirection = 0 end)
 
 -- Função Troll: teleportar outros jogadores
 trollBtn.MouseButton1Click:Connect(function()
